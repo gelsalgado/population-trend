@@ -7,10 +7,12 @@ export default class PrefectureComponent extends Component {
 
 		this.state = {
 			prefectures: [],
-			filter: 'ÁLL'
+			filter: 'ALL'
 		}
 
 		this.getPrefectureList = this.getPrefectureList.bind(this);
+		this.renderCheckBoxes = this.renderCheckBoxes.bind(this);
+		this.toggleCheckbox = this.toggleCheckbox.bind(this);
 	}
 
 	getPrefectureList() {
@@ -44,9 +46,47 @@ export default class PrefectureComponent extends Component {
 		this.getPrefectureList();
 	}
 
+	renderCheckBoxes() {
+		const {prefectures, filter} = this.state;
+
+	    return prefectures
+	        .filter(checkbox =>
+	            filter === 'ALL' ||
+	            filter === 'CHECKED' && checkbox.checked ||
+	            filter === 'UNCHECKED' && !checkbox.checked
+	        )
+	        .map((checkbox, index) =>
+	            <div>
+	                <label>
+	                    <input
+	                        type="checkbox"
+	                        checked={checkbox.checked}
+	                        onChange={this.toggleCheckbox.bind(this, index)}
+	                    />
+	                    {checkbox.prefName}
+	                </label>
+	            </div>
+	        );
+	}
+
+	toggleCheckbox(index) {
+    	const {prefectures} = this.state;
+
+    	prefectures[index].checked = !prefectures[index].checked;
+
+    	this.setState({
+        	prefectures
+    	});
+	}
+
 	render() {
 	    return (
-	    	<h1>Japan Prefectures</h1>
+	    	<div>
+	    		<h1>Japan Prefectures</h1>
+	    		<div class="section_checkbox">
+	    			{this.renderCheckBoxes()}
+	    		</div>
+	    	</div>
     	);
 	}
 }
