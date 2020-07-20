@@ -9,19 +9,18 @@ export default class PrefectureComponent extends Component {
 		this.state = {
 			prefectures: [],
 			prefectureData: [],
-			formattedData: [],
-			yearMap: [],
+			prefectureInfo: [],
 			filter: 'ALL'
 		}
 
 		this.getPrefectureList = this.getPrefectureList.bind(this);
-		this.getPopulationData = this.getPopulationData.bind(this);
-		this.renderCheckBoxes = this.renderCheckBoxes.bind(this);
+		this.getPopulationData = this.getPopulationData.bind(this);		
 		this.toggleCheckbox = this.toggleCheckbox.bind(this);
-		this.renderLineChart = this.renderLineChart.bind(this);
-		this.removePrefectureData = this.removePrefectureData.bind(this);
 		this.addToChartData = this.addToChartData.bind(this);
 		this.removeFromChartData = this.removeFromChartData.bind(this);
+		this.renderCheckBoxes = this.renderCheckBoxes.bind(this);
+		this.renderLineChart = this.renderLineChart.bind(this);
+		this.renderLines = this.renderLines.bind(this);
 	}
 
 	getPrefectureList() {
@@ -37,6 +36,7 @@ export default class PrefectureComponent extends Component {
 			    if (xmlHtppReq.status === 200) {
 			      var response = JSON.parse(xmlHtppReq.responseText);
 
+			      // Add prefecture list
 			      this.setState({
 					prefectures: response.result
         		  });
@@ -65,16 +65,9 @@ export default class PrefectureComponent extends Component {
 			if (xmlHtppReq.readyState === 4) {
 			    if (xmlHtppReq.status === 200) {
 			      var response = JSON.parse(xmlHtppReq.responseText);
-			      const prefData = {'prefName': prefecture.prefName, 'data': response.result.data[0].data}
-			      //console.log(response.result.data[0].data);
 
+			      // Add data acquired into prefectureData and format it into rechart data format
 			      this.addToChartData(prefecture.prefName, response.result.data[0].data);
-
-			      this.setState({
-					prefectureData: [...this.state.prefectureData, prefData]
-        		  });
-
-        		  // console.log(this.state.prefectureData);
 			    } else {
 			      console.error(xmlHtppReq.statusText);
 			    }
@@ -82,11 +75,86 @@ export default class PrefectureComponent extends Component {
 		}.bind(this)
 
 		xmlHtppReq.send();
-
 	}
 
 	componentDidMount() {
 		this.getPrefectureList();
+	}
+
+	toggleCheckbox(index) {
+    	const {prefectures} = this.state;
+
+    	prefectures[index].checked = !prefectures[index].checked;
+
+    	if (prefectures[index].checked) {
+    		// When a checkbox is ticked, get population data for that prefecture
+    		this.getPopulationData(prefectures[index]);
+    	}
+    	else {
+    		// When a checkbox is unticked, remove the prefecture data from list
+    		this.removeFromChartData(prefectures[index].prefName);
+    	}
+
+    	this.setState({
+        	prefectures
+    	});
+	}
+
+	addToChartData(prefName, data) {
+		var newFormattedData = [...this.state.prefectureData];
+		var newPrefInfo = [...this.state.prefectureInfo];
+		var randomColor = "#" + Math.floor(Math.random()*16777215).toString(16);
+
+		if (Object.keys(newFormattedData).length === 0) {
+			// Initialize objects to be used
+			newFormattedData = new Array();
+			newPrefInfo = new Array();
+
+			for(var idx = 0; idx < data.length; idx++) {
+				newFormattedData.push({"year":data[idx].year, [prefName]:data[idx].value});
+			}
+		}
+		else {
+			// Add prefecture data by using prefecture name as the key and assign value
+			for(var idx = 0; idx < data.length; idx++) {
+				newFormattedData[idx][prefName] = data[idx].value;
+			}
+		}
+
+		// Add prefecture name to the list and assign a color
+		newPrefInfo.push({"name": prefName, "color": randomColor});
+
+		this.setState({
+			prefectureData: newFormattedData,
+			prefectureInfo: newPrefInfo
+		});
+
+		// console.log("addToChartData");
+		// console.log(this.state.prefectureData);
+		// console.log(this.state.prefectureInfo);
+	}
+
+	removeFromChartData(prefName) {
+		var oldPrefectureData = [...this.state.prefectureData];
+
+		// Remove prefecture data for line chart
+		var newPrefectureData = oldPrefectureData.map(function(year){
+			delete year[prefName];
+			return year;
+		});
+		// this.setState({prefectureData: newPrefectureData});
+
+		// Remove prefecture name and color from the list
+    	const newPrefectureInfo = this.state.prefectureInfo.slice(0).filter(data => data.name !== prefName);
+    	
+    	this.setState({
+    		prefectureData: newPrefectureData, 
+    		prefectureInfo: newPrefectureInfo 
+    	});
+
+		// console.log("removeFromChartData");
+		// console.log(this.state.prefectureData);
+		// console.log(this.state.prefectureInfo);
 	}
 
 	renderCheckBoxes() {
@@ -112,92 +180,34 @@ export default class PrefectureComponent extends Component {
 	        );
 	}
 
-	toggleCheckbox(index) {
-    	const {prefectures} = this.state;
-
-    	prefectures[index].checked = !prefectures[index].checked;
-
-    	if (prefectures[index].checked) {
-    		this.getPopulationData(prefectures[index]);
-    	}
-    	else {
-    		this.removeFromChartData(prefectures[index].prefName);
-    		this.removePrefectureData(prefectures[index].prefName);
-    	}
-
-    	this.setState({
-        	prefectures
-    	});
-	}
-
 	renderLineChart() {
-		const {formattedData} = this.state;
+		const {prefectureData} = this.state;
 
 		return (
-		  <ResponsiveContainer width='50%' height={400}>
-			  <LineChart data={formattedData} width={600} height={400} margin={{top: 40, right: 30, left: 30, bottom: 5,}}>
+		  <ResponsiveContainer width='100%' height={400}>
+			  <LineChart data={prefectureData} width={600} height={400} margin={{top: 40, right: 30, left: 30, bottom: 5,}}>
 			    {this.renderLines()}
 			    <CartesianGrid stroke="#ccc" />
 			    <XAxis dataKey="year">
-			    	<Label value="年" position="insideBottomRight" offset={0} />
+			    	<Label value="年" position="right" offset={30} />
 			    </XAxis>
 			    <YAxis>
 			    	 <Label value="人口数" position="insideTopLeft" offset={-30} />
 			    </YAxis>
 			    <Tooltip />
-			    <Legend layout="vetical" verticalAlign="middle" align="right" wrapperStyle={{right: -100}} />
+			    <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{right: 0}} />
 			  </LineChart>
 		  </ ResponsiveContainer>
 		);
 	}
 
 	renderLines() {
-		const {prefectureData} = this.state;
+		const {prefectureInfo} = this.state;
 
-	    return prefectureData
+	    return prefectureInfo
 	        .map((prefecture, index) =>
-	        	<Line type="monotone" dataKey={prefecture.prefName} stroke="#8884d8" />
+	        	<Line type="monotone" dataKey={prefecture.name} stroke={prefecture.color} />
 	    );
-	}
-
-	removePrefectureData(nameToDelete) {
-		const newPrefectureData = this.state.prefectureData.filter(data => data.prefName !== nameToDelete);
-    	this.setState({ prefectureData: newPrefectureData });
-	}
-
-	addToChartData(prefName, data) {
-		var newFormattedData = [...this.state.formattedData];
-
-		if (Object.keys(newFormattedData).length === 0) {
-			newFormattedData = new Array();
-
-			for(var idx = 0; idx < data.length; idx++) {
-				newFormattedData.push({"year":data[idx].year, [prefName]:data[idx].value});
-			}
-		}
-		else {
-			for(var idx = 0; idx < data.length; idx++) {
-				newFormattedData[idx][prefName] = data[idx].value;
-			}
-		}
-
-		this.setState({formattedData: newFormattedData});
-
-		// console.log("addToChartData");
-		// console.log(this.state.formattedData);
-	}
-
-	removeFromChartData(prefName) {
-		var oldPrefectureData = [...this.state.formattedData];
-		var newPrefectureData = oldPrefectureData.map(function(year){
-			delete year[prefName];
-			return year;
-		});
-
-		this.setState({formattedData: newPrefectureData});
-
-		// console.log("removeFromChartData");
-		// console.log(this.state.formattedData);
 	}
 
 	render() {
