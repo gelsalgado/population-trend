@@ -9,8 +9,7 @@ export default class PrefectureComponent extends Component {
 		this.state = {
 			prefectures: [],
 			prefectureData: [],
-			prefectureInfo: [],
-			filter: 'ALL'
+			prefectureInfo: []
 		}
 
 		this.getPrefectureList = this.getPrefectureList.bind(this);
@@ -103,7 +102,15 @@ export default class PrefectureComponent extends Component {
 	addToChartData(prefName, data) {
 		var newFormattedData = [...this.state.prefectureData];
 		var newPrefInfo = [...this.state.prefectureInfo];
-		var randomColor = "#" + Math.floor(Math.random()*16777215).toString(16);
+		
+		// Generate a random color
+		var base = Math.round(0xffffff * Math.random()).toString(16);
+		var padNeeded = (6-base.length);
+		var padding = "000000";
+		var pad = padding.substring(0,padNeeded);
+		var randomColor = "#" + pad + base;
+		// console.log("Random Color: " + randomColor);
+
 
 		if (Object.keys(newFormattedData).length === 0) {
 			// Initialize objects to be used
@@ -158,14 +165,9 @@ export default class PrefectureComponent extends Component {
 	}
 
 	renderCheckBoxes() {
-		const {prefectures, filter} = this.state;
+		const {prefectures} = this.state;
 
 	    return prefectures
-	        .filter(checkbox =>
-	            filter === 'ALL' ||
-	            filter === 'CHECKED' && checkbox.checked ||
-	            filter === 'UNCHECKED' && !checkbox.checked
-	        )
 	        .map((checkbox, index) =>
 	            <div key={checkbox.prefCode.toString()}>
 	                <label>
@@ -188,10 +190,17 @@ export default class PrefectureComponent extends Component {
 			  <LineChart data={prefectureData} width={600} height={400} margin={{top: 40, right: 30, left: 30, bottom: 5,}}>
 			    {this.renderLines()}
 			    <CartesianGrid stroke="#ccc" />
-			    <XAxis dataKey="year">
+			    <XAxis 
+			    	dataKey="year"
+			    	ticks={[1970,1980,1990,2000,2010,2020,2030,2040]}>
+			    	domain={[0,2040]}
+			    	type="number"
 			    	<Label value="年" position="right" offset={30} />
 			    </XAxis>
-			    <YAxis>
+			    <YAxis
+			    	ticks={[5000000, 10000000, 15000000, 20000000]}
+			    	domain={[0, 20000000]}
+			    	type="number">
 			    	 <Label value="人口数" position="insideTopLeft" offset={-30} />
 			    </YAxis>
 			    <Tooltip />
@@ -206,7 +215,7 @@ export default class PrefectureComponent extends Component {
 
 	    return prefectureInfo
 	        .map((prefecture, index) =>
-	        	<Line type="monotone" dataKey={prefecture.name} stroke={prefecture.color} />
+	        	<Line key={"line" + index} type="monotone" dataKey={prefecture.name} stroke={prefecture.color} strokeWidth={2} />
 	    );
 	}
 
